@@ -1,11 +1,13 @@
 import type { AwsConfig } from "@/lib/aws/aws-types";
+import type { SmtpConfig } from "@/lib/email/smtp-types";
 
-export type SendingProvider = "none" | "cloudflare" | "resend" | "ses";
+export type SendingProvider = "none" | "cloudflare" | "resend" | "ses" | "smtp";
 
 export type OutboundProviderConfig =
 	| { provider: "cloudflare" }
 	| { provider: "resend"; apiKey: string }
-	| { provider: "ses"; config: AwsConfig };
+	| { provider: "ses"; config: AwsConfig }
+	| { provider: "smtp"; config: SmtpConfig };
 
 export type OutboundProviderAttachment = {
 	filename: string;

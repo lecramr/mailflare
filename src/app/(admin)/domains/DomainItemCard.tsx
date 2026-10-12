@@ -90,10 +90,10 @@ export default function DomainItemCard({
                 {t("domains.badge.receivingVia", { provider: item.receivingProvider === "ses" ? "Amazon SES" : "Resend" })}
               </Badge>
             )}
-            {item.sendingProvider === "resend" || item.sendingProvider === "ses" ? (
+            {item.sendingProvider === "resend" || item.sendingProvider === "ses" || item.sendingProvider === "smtp" ? (
               <Badge variant="outline" className="gap-1">
                 <StatusIcon ok className="h-3 w-3" />
-                {t("domains.badge.sendingVia", { provider: item.sendingProvider === "ses" ? "Amazon SES" : "Resend" })}
+                {t("domains.badge.sendingVia", { provider: item.sendingProvider === "ses" ? "Amazon SES" : item.sendingProvider === "smtp" ? "SMTP" : "Resend" })}
               </Badge>
             ) : item.sendingProvider === "none" ? (
               <Badge variant="secondary" className="gap-1 opacity-50">

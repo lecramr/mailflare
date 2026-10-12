@@ -61,6 +61,12 @@ Only the sending statements are needed if you use SES just for sending.
 
 Each message is read from your own bucket, handed to the normal inbound pipeline, and deleted. SES's virus scan is enabled and infected messages are dropped. `APP_URL` has to be a public HTTPS address so SNS can reach the endpoint. The bucket and topic are shared by all SES domains; **Clean up** removes only the domain's rule and MX, so Mailflare never deletes resources another domain may still use.
 
+## SMTP (sending only)
+
+Pick **SMTP** as a domain's sender to relay through any SMTP service (Mailgun, Postmark, Brevo, your own server). Enter the **host**, **port**, **security** (TLS on 465, or STARTTLS on 587), **username** and **password** on the domain's page. Mailflare logs in to check them before saving.
+
+Credentials are stored per domain, in their own table, and are never returned to the browser. SPF and DKIM are set up with the SMTP service itself; Mailflare does not touch DNS. On Cloudflare Workers the connection uses `cloudflare:sockets`, so port 25 is unavailable; use 465 or 587. Inline images are embedded as `data:` URIs because the Workers SMTP client cannot mark attachments inline. Replies thread against the Message-ID Mailflare generates.
+
 ## MX records and switching receiving provider
 
 Only one service can own a domain's MX records. When a provider's Setup finds MX records for something else (including Cloudflare Email Routing's), it stops and shows them, and replaces them only after you confirm. Confirming means the previous service stops receiving mail for that domain.

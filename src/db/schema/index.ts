@@ -52,7 +52,7 @@ export const domains = sqliteTable(
 			.default("pending"),
 		routingStatus: text("routing_status"),
 		sendingSubdomainTag: text("sending_subdomain_tag"),
-		sendingProvider: text("sending_provider", { enum: ["none", "cloudflare", "resend", "ses"] }).notNull().default("none"),
+		sendingProvider: text("sending_provider", { enum: ["none", "cloudflare", "resend", "ses", "smtp"] }).notNull().default("none"),
 		receivingProvider: text("receiving_provider", { enum: ["none", "cloudflare", "resend", "ses"] }).notNull().default("cloudflare"),
 		sendingRequested: integer("sending_requested", { mode: "boolean" }).notNull().default(false),
 		sendingEnabled: integer("sending_enabled", { mode: "boolean" }).notNull().default(false),
@@ -66,6 +66,18 @@ export const domains = sqliteTable(
 		index("domains_user_idx").on(t.userId),
 	],
 );
+
+/** SMTP sending credentials, one row per domain. Kept out of `domains` so the many whole-row selects never carry the password. */
+export const domainSmtp = sqliteTable("domain_smtp", {
+	domainId: text("domain_id")
+		.primaryKey()
+		.references(() => domains.id, { onDelete: "cascade" }),
+	/** JSON: host, port, secure, username, password (see src/lib/email/smtp-types.d.ts). */
+	config: text("config").notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+});
 
 export const mailboxes = sqliteTable(
 	"mailboxes",

@@ -1,15 +1,17 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { appSettings, domains } from "@/db/schema";
+import { appSettings, domains, domainSmtp } from "@/db/schema";
 import { requireAwsConfig } from "@/lib/aws/config";
 import { sendSesEmail } from "@/lib/aws/ses";
 import { getEmailAddress } from "@/lib/email/address";
+import { sendWithSmtp } from "@/lib/email/smtp";
+import { parseSmtpConfig, toBase64 } from "@/lib/email/smtp-utils";
 import type { OutboundProviderConfig, OutboundProviderMessage, ResendKeyStatus } from "@/lib/email/outbound-provider-types";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 /**
- * Each domain picks its own sender: Cloudflare Email Sending, Resend, or none
+ * Each domain picks its own sender: Cloudflare Email Sending, Resend, SES, SMTP, or none
  * (receive-only). Receiving and storage always stay on Cloudflare. The Resend key
  * is shared by every domain; it comes from the admin setting, falling back to a
  * RESEND_API_KEY secret so it can be provisioned outside the database.
@@ -46,16 +48,13 @@ export async function getOutboundProviderConfig(env: CloudflareEnv, fromAddress:
 	}
 	if (domain.provider === "resend") return { provider: "resend", apiKey: await getResendApiKey(env) };
 	if (domain.provider === "ses") return { provider: "ses", config: await requireAwsConfig(env) };
-	return { provider: "cloudflare" };
-}
-
-function toBase64(buffer: ArrayBuffer): string {
-	const bytes = new Uint8Array(buffer);
-	let binary = "";
-	for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-		binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+	if (domain.provider === "smtp") {
+		const [row] = await getDb(env).select({ config: domainSmtp.config }).from(domainSmtp).innerJoin(domains, eq(domainSmtp.domainId, domains.id)).where(eq(domains.hostname, hostname!)).limit(1);
+		const config = parseSmtpConfig(row?.config);
+		if (!config) throw new Error(`SMTP is selected for ${hostname} but not configured. Add the server details on the Domains page.`);
+		return { provider: "smtp", config };
 	}
-	return btoa(binary);
+	return { provider: "cloudflare" };
 }
 
 /** Resend does not return the RFC 5322 Message-ID, so we mint one for replies to thread against. */
@@ -109,6 +108,7 @@ export async function sendThroughProvider(
 ): Promise<{ messageId: string }> {
 	if (config.provider === "resend") return sendWithResend(config.apiKey, message, idempotencyKey);
 	if (config.provider === "ses") return sendSesEmail(config.config, message);
+	if (config.provider === "smtp") return sendWithSmtp(env, config.config, message);
 	const response = await env.EMAIL.send({
 		from: message.from,
 		to: message.to,

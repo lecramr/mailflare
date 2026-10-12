@@ -1,4 +1,4 @@
-export type SendingProvider = "none" | "cloudflare" | "resend" | "ses";
+export type SendingProvider = "none" | "cloudflare" | "resend" | "ses" | "smtp";
 export type ReceivingProvider = "none" | "cloudflare" | "resend" | "ses";
 
 export type Domain = {

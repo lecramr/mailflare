@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { domains } from "@/db/schema";
+import { domains, domainSmtp } from "@/db/schema";
 import { getEnv } from "@/lib/cloudflare";
 import { requireUser } from "@/lib/auth/cookies";
 import { canManageDomains } from "@/lib/auth/admin";
@@ -19,7 +19,7 @@ import { MxConflictError } from "@/lib/domains/receiving-dns";
 
 type Params = { params: Promise<{ id: string }> };
 
-const schema = z.object({ provider: z.enum(["none", "cloudflare", "resend", "ses"]), replaceMx: z.boolean().optional() });
+const schema = z.object({ provider: z.enum(["none", "cloudflare", "resend", "ses", "smtp"]), replaceMx: z.boolean().optional() });
 
 /**
  * Chooses what sends mail for this domain. Receiving is unaffected, except that
@@ -70,7 +70,8 @@ export async function GET(request: Request, { params }: Params) {
 		sesSendingStatus(env, domain.hostname),
 	]);
 	const resend = resendStatus === null ? null : resendStatus !== "not_registered";
-	return NextResponse.json({ cloudflare: !!cloudflare, resend, resendStatus, ses: ses === null ? null : ses.registered, sesVerified: ses?.verified ?? null }, { headers: { "Cache-Control": "no-store" } });
+	const [smtpRow] = await getDb(env).select({ id: domainSmtp.domainId }).from(domainSmtp).where(eq(domainSmtp.domainId, domain.id)).limit(1);
+	return NextResponse.json({ cloudflare: !!cloudflare, resend, resendStatus, ses: ses === null ? null : ses.registered, sesVerified: ses?.verified ?? null, smtp: !!smtpRow }, { headers: { "Cache-Control": "no-store" } });
 }
 
 async function sesSendingStatus(env: CloudflareEnv, hostname: string) {
@@ -79,7 +80,7 @@ async function sesSendingStatus(env: CloudflareEnv, hostname: string) {
 	try { return await getSesIdentity(config, hostname); } catch { return null; }
 }
 
-const removeSchema = z.object({ target: z.enum(["cloudflare", "resend", "ses"]) });
+const removeSchema = z.object({ target: z.enum(["cloudflare", "resend", "ses", "smtp"]) });
 
 /** Removes the config of a provider this domain is not using. */
 export async function DELETE(request: Request, { params }: Params) {
@@ -98,6 +99,7 @@ export async function DELETE(request: Request, { params }: Params) {
 	try {
 		if (parsed.data.target === "cloudflare") await removeCloudflareSending(env, domain);
 		else if (parsed.data.target === "resend") await removeResendConfig(env, domain);
+		else if (parsed.data.target === "smtp") await getDb(env).delete(domainSmtp).where(eq(domainSmtp.domainId, domain.id));
 		else await removeSesSending(env, domain);
 		return NextResponse.json({ ok: true });
 	} catch (error) {

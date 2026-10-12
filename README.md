@@ -23,7 +23,7 @@ Want to support the mailflare? <a target="_blank" href="https://store.paymug.co/
 
 ## What you can do
 
-- **Domains**: Connect your Cloudflare domains and choose Cloudflare, Resend, or Amazon SES for each.
+- **Domains**: Connect your Cloudflare domains and choose Cloudflare, Resend, Amazon SES, or any SMTP server for each.
 - **Mailboxes**: Create personal or shared mailboxes and give other people access to them.
 - **Email**: Send and receive mail with attachments, rich text, signatures, and automatic replies.
 - **Calendar**: Schedule repeating events with time zones and attendees, who receive email invitations.

@@ -73,7 +73,7 @@ export const addDomainSchema = z.object({
 	enableSending: z.boolean().optional(),
 	replaceMxRecords: z.boolean().optional(),
 	/** Which service sends mail for the domain; derived from `enableSending` when omitted. */
-	sendingProvider: z.enum(["none", "cloudflare", "resend", "ses"]).optional(),
+	sendingProvider: z.enum(["none", "cloudflare", "resend", "ses", "smtp"]).optional(),
 	/** Which service receives mail for the domain; Cloudflare Email Routing when omitted. */
 	receivingProvider: z.enum(["none", "cloudflare", "resend", "ses"]).optional(),
 });
